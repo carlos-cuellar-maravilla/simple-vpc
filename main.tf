@@ -38,7 +38,7 @@ module "vpc" {
   enable_ipv6 = false
 
   enable_nat_gateway = true
-  single_nat_gateway = false
+  single_nat_gateway = true
 
   public_subnet_tags = {
     Name = "public-subnet"
@@ -61,7 +61,7 @@ module "vpc" {
 # EC2 Module
 ################################################################################
 
-
+#/*
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "~> 3.0"
@@ -108,6 +108,7 @@ resource "aws_ebs_volume" "this" {
 
   tags = local.tags
 }
+#*/
 
 ################################################################################
 # RDS Module
@@ -155,8 +156,8 @@ module "db" {
   major_engine_version = "8.0"      # DB option group
   instance_class       = "db.t2.micro"
 
-  allocated_storage     = 20
-  max_allocated_storage = 100
+  #allocated_storage     = 20
+  #max_allocated_storage = 100
 
   db_name  = "completeMysql"
   username = "complete_mysql"
@@ -164,7 +165,7 @@ module "db" {
 
   multi_az               = true
   db_subnet_group_name   = module.vpc.database_subnet_group
-  vpc_security_group_ids = [module.security_group_ec2.security_group_id]
+  vpc_security_group_ids = [module.security_group_rds.security_group_id]
 
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
@@ -177,33 +178,5 @@ module "db" {
   skip_final_snapshot = true
   deletion_protection = false
 
-  performance_insights_enabled          = false
-  performance_insights_retention_period = 7
-  create_monitoring_role                = false
-  monitoring_interval                   = 60
-
-  parameters = [
-    {
-      name  = "character_set_client"
-      value = "utf8mb4"
-    },
-    {
-      name  = "character_set_server"
-      value = "utf8mb4"
-    }
-  ]
-
   tags = local.tags
-  db_instance_tags = {
-    "Sensitive" = "high"
-  }
-  db_option_group_tags = {
-    "Sensitive" = "low"
-  }
-  db_parameter_group_tags = {
-    "Sensitive" = "low"
-  }
-  db_subnet_group_tags = {
-    "Sensitive" = "high"
-  }
 }
