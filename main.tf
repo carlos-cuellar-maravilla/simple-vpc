@@ -26,14 +26,14 @@ module "vpc" {
   cidr = "10.0.0.0/16"
 
   azs              = ["${local.region}a", "${local.region}b", "${local.region}c"]
-  public_subnets   = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  private_subnets  = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
-  database_subnets = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
+  public_subnets   = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
+  private_subnets  = ["10.0.20.0/24", "10.0.21.0/24", "10.0.22.0/24"]
+  database_subnets = ["10.0.30.0/24", "10.0.31.0/24", "10.0.32.0/24"]
 
 
   create_database_subnet_route_table    = true
-  create_elasticache_subnet_route_table = true
-  create_redshift_subnet_route_table    = true
+  create_elasticache_subnet_route_table = false
+  create_redshift_subnet_route_table    = false
 
   enable_ipv6 = false
 
@@ -72,7 +72,7 @@ module "ec2_instance" {
   instance_type          = "t2.micro"
   key_name               = "carlos-cuellar-maravilla"
   monitoring             = false
-  vpc_security_group_ids = [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.security_group_ec2.security_group_id]
   subnet_id              = element(module.vpc.public_subnets, 0)
 
   tags = {
@@ -81,7 +81,7 @@ module "ec2_instance" {
   }
 }
 
-module "security_group" {
+module "security_group_ec2" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
 
@@ -113,6 +113,36 @@ resource "aws_ebs_volume" "this" {
 # RDS Module
 ################################################################################
 
+module "security_group_rds" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 4.0"
+
+  name        = "${local.name}-security-group-rds"
+  description = "Security group for RDS example"
+  vpc_id      = module.vpc.vpc_id
+
+  #ingress_cidr_blocks = "10.0.0.0/16"
+
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 3306
+      to_port     = 3306
+      protocol    = "tcp"
+      description = "Ingress-sg"
+      cidr_blocks = "10.0.0.0/16"
+    }]
+   egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = -1
+      description = "Egress-sg"
+      cidr_blocks = "0.0.0.0/0"
+    }]
+
+  tags = local.tags
+}
+
 module "db" {
   source = "terraform-aws-modules/rds/aws"
 
@@ -134,7 +164,7 @@ module "db" {
 
   multi_az               = true
   db_subnet_group_name   = module.vpc.database_subnet_group
-  vpc_security_group_ids = [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.security_group_ec2.security_group_id]
 
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
